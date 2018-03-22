@@ -1,0 +1,30 @@
+/**
+   * 微信上传多媒体接口
+   * @method Weichat.upload
+   * @desc 微信上传多媒体接口，其中包括有图片（image）、语音（voice）、视频（video）和缩略图（thumb）
+   * @author slide
+   * @return object result 返回结果/错误返回错误信息
+   */
+  public function upload(){
+
+    // 参数
+    $access_token = $this->getParams('access_token', 'string');
+    $media = $this->getParams('media', 'string');
+    $type = $this->getParams('type', 'string');
+
+    dump($media);
+
+    if(!$type || $type == ''){
+      return $this->ajax(60003, 'error', '请确认需要上传的文件类型', []);
+    }
+
+    if(!$media || is_null($media) || $media == ''){
+      return $this->ajax(60003, 'error', '没有需要上传的内容', []);
+    }
+
+    $url = $this->wechat_url['upload'].'access_token='.$access_token.'&type='.$type;
+
+    $result = httpRequest($url, 'POST', $media, [], true);
+
+    return $this->returnResult($result);
+  }
