@@ -1,5 +1,6 @@
 <?php
 /**
+ * @class 微信接口封装
  * Created by PhpStorm.
  * User: Administrator
  * Date: 2017/8/12 0012

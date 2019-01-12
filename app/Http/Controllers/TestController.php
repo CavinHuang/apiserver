@@ -21,12 +21,9 @@ class TestController extends \Illuminate\Routing\Controller {
      // data:image/jpeg;base64,
     $data = [
       'app_id' => 'TY201708090326537823883015',
-      "method" => "Music.getTopList",
+      "method" => "ArticleCollect.sogoWechatArticleDetail",
       "nonce" => "mH3TTjPAWPwIJL2Iqkvvo7E2R5dF45hQ",
-      /*"content" => "003tJCdP4QXEe8",
-      "logo_url" => "http://www.wvmp360.com/images/wv1.jpg",
-      "logo_size" => "100,100",
-      "resource" => 1*/
+      "url" => "https://mp.weixin.qq.com/s/Oxb2Zu-bbuAYOusG4qEcNg"
     ];
     ksort($data);
     $str = [];
@@ -40,13 +37,10 @@ class TestController extends \Illuminate\Routing\Controller {
     $new_str = $app_scret.implode('',$str).$app_scret;
     $new_str = str_replace('%3F', '?', $new_str);
     dump($new_str);
-    dump(urldecode('%E6%8B%93%E6%BA%90%E7%A7%91%E6%8A%80'));
-    dump(base64_encode('拓源科技'));
     dump(strtoupper(md5($new_str)));
     $data['sign'] = strtoupper(md5($new_str));
 
-	dump(bcrypt('123456'));
-
+    dump($data);
 // $returl = httpRequest('http://127.0.0.1:8000/api/router', 'POST', json_encode($data), [], true);
 //  dump($returl);
 
@@ -14835,5 +14829,20 @@ str;
       "to" => $to_uid,
     );
    $result = httpRequest($push_api_url, 'post', $post_data, [], true);
+  }
+  
+  public function str () {
+    $url = "https://acs.m.taobao.com/h5/mtop.alimama.union.hsf.coupon.get/1.0/?jsv=2.4.0&appKey=12574478&t=1545823398441&sign=545dd814fdb5e4ba3dcbca8ed8d78bc2&api=mtop.alimama.union.hsf.coupon.get&v=1.0&AntiCreep=true&AntiFlood=true&type=jsonp&dataType=jsonp&callback=mtopjsonp1&data=%7B%22e%22%3A%22JBLuhU9FiVYNfLV8niU3R5TgU2jJNKOfNNtsjZw%2F%2FoI31pUtcv1AuWWrWLJTbN3iLspxGy3zBjap%2B7s0sowtFH8nQKiajzP9xkBA7gLfMlk9x3wfD33383sK1eK%2BmoM1jXSsLtym2PWIYeaGNfE5ixLAZ153OQpMJ4rSWiVuaEJ8n9B%2F0B%2Bn1Bx0YMLGba9iaPYfnkRNGzdVbrKqp4Yn8g%3D%3D%22%2C%22pid%22%3A%22mm_33231688_7050284_23466709%22%2C%22ptl%22%3A%22floorId%3A3756%3Bapp_pvid%3A59590_11.1.238.219_97719_1545804334470%3Btpp_pvid%3Af924d238-8bc7-4edd-9bde-b8af1cbe1a74%22%7D";
+    
+    $decodeUrl = 'https://acs.m.taobao.com/h5/mtop.alimama.union.hsf.coupon.get/1.0/?jsv=2.4.0&appKey=12574478&t=1545823398441&sign=545dd814fdb5e4ba3dcbca8ed8d78bc2&api=mtop.alimama.union.hsf.coupon.get&v=1.0&AntiCreep=true&AntiFlood=true&type=jsonp&dataType=jsonp&callback=mtopjsonp1&data={"e":"JBLuhU9FiVYNfLV8niU3R5TgU2jJNKOfNNtsjZw//oI31pUtcv1AuWWrWLJTbN3iLspxGy3zBjap+7s0sowtFH8nQKiajzP9xkBA7gLfMlk9x3wfD33383sK1eK+moM1jXSsLtym2PWIYeaGNfE5ixLAZ153OQpMJ4rSWiVuaEJ8n9B/0B+n1Bx0YMLGba9iaPYfnkRNGzdVbrKqp4Yn8g==","pid":"mm_33231688_7050284_23466709","ptl":"floorId:3756;app_pvid:59590_11.1.238.219_97719_1545804334470;tpp_pvid:f924d238-8bc7-4edd-9bde-b8af1cbe1a74"}';
+    
+    //dump(urldecode($url));
+    $queryInfo = \GuzzleHttp\Psr7\parse_query(parse_url($url)['query']);
+    dump($queryInfo);
+    dump($this->sign('2348a9246932e336807f8b5296a29304', '1545823398441', '12574478', '{"e":"JBLuhU9FiVYNfLV8niU3R5TgU2jJNKOfNNtsjZw//oI31pUtcv1AuWWrWLJTbN3iLspxGy3zBjap+7s0sowtFH8nQKiajzP9xkBA7gLfMlk9x3wfD33383sK1eK+moM1jXSsLtym2PWIYeaGNfE5ixLAZ153OQpMJ4rSWiVuaEJ8n9B/0B+n1Bx0YMLGba9iaPYfnkRNGzdVbrKqp4Yn8g==","pid":"mm_33231688_7050284_23466709","ptl":"floorId:3756;app_pvid:59590_11.1.238.219_97719_1545804334470;tpp_pvid:f924d238-8bc7-4edd-9bde-b8af1cbe1a74"}'));
+  }
+  
+  protected function sign($_m_h5_tk, $t, $appkey, $data) {
+    return md5($_m_h5_tk.'&'.$t.'&'.$appkey.'&'.$data);
   }
 }

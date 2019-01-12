@@ -1,5 +1,6 @@
 <?php
 /**
+ * @class 内部壁纸生成
  * Created by PhpStorm.
  * User: Administrator
  * Date: 2017/8/15 0015

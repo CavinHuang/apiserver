@@ -1,4 +1,7 @@
 <?php
+/**
+ * @class 文章采集
+ */
 namespace App\Services\ApiServer\Response;
 
 use QL\QueryList;
@@ -49,7 +52,7 @@ class ArticleCollect extends BaseResponse implements InterfaceResponse {
     ));
 
     foreach ($hj->data as $k => &$v){
-      $v['thumb'] = '/wechat_image?url='.explode('url=', $v['thumb'])[1];
+      $v['thumb'] = 'http://'.$_SERVER['HTTP_HOST'].'/wechat_image?url='.explode('url=', $v['thumb'])[1];
     }
 
     return $this->ajax(200, 'success', '成功', $hj->data);
@@ -100,10 +103,14 @@ class ArticleCollect extends BaseResponse implements InterfaceResponse {
    * @return array result[].article_title 文章标题
    * @return array result[].author_avatar 文章作者
    * @return array result[].article_thumb 文章缩略图
+   * @return array result[].paragraph 段落数组
+   * @return array result[].style 文章样式
+   * @return array result[].audio 文章中的音乐
    */
   public function sogoWechatArticleDetail()
   {
     $url = $this->getParams('url', 'string');
+    $field = $this->getParams('field', 'string');
 
     if($url == '') return $this->ajax(404, 'param error', '参数错误');
 
@@ -111,6 +118,8 @@ class ArticleCollect extends BaseResponse implements InterfaceResponse {
       'http' => array(
         'header' => "Referer:" . 'http://weixin.sogou.com/'),
     );
+  
+    
     $url = file_get_contents($url, FALSE, stream_context_create($option));
 
     //去除微信干扰元素!!!否则乱码
@@ -123,27 +132,31 @@ class ArticleCollect extends BaseResponse implements InterfaceResponse {
         $doc = \phpQuery::newDocumentHTML($content);
         $imgs = pq($doc)->find('img');
         foreach ($imgs as $img) {
-          $src = '/wechat_image?url='.pq($img)->attr('data-src');
+          $src =  'http://'.$_SERVER['HTTP_HOST'].'/wechat_image?url='.pq($img)->attr('data-src');
           pq($img)->attr('src',$src);
+          pq($img)->attr('data-src',$src);
         }
-        $videos  = pq("iframe.video_iframe");
-        $vplay = '/https:\/\/v.qq.com\/iframe\/preview.html/';
-        $vplay_n = 'https://v.qq.com/iframe/player.html';
+        $videos  = pq("iframe");
+        $vplay = '/\/preview.html/';
+        $vplay_n = '/player.html';
         foreach ($videos as $vedio) {
-
+          
           $vds = pq($vedio)->attr('data-src');
 
           $reg = "/width=[0-9]*&height=[0-9]*/"; // 'width=auto&height=auto'
 
           $vdrp = preg_replace($vplay, $vplay_n, $vds);
           $vdrp = preg_replace($reg, '', $vdrp);
-          // $vdrp = preg_replace('/auto=0/', 'auto=1', $vdrp);
+          $vdrp = preg_replace('/auto=0/', 'auto=1', $vdrp);
+          
           pq($vedio)->attr('src', $vdrp);
+          
         }
         return $doc->htmlOuter();
       }),
-      'time' => array('#post-date', 'text'),
-      'author_name' => array('#post-user', 'text'),
+      'audio' => array("qqmusic", '*'),
+      'time' => array('#publish_time', 'text'),
+      'author_name' => array('#js_name', 'text'),
       'stylesheet' => array('head', 'html', '-meta', function ($head) {
         $doc = \phpQuery::newDocumentHTML($head);
         $styles = pq($doc)->find('style');
@@ -154,9 +167,50 @@ class ArticleCollect extends BaseResponse implements InterfaceResponse {
         return $css;
       })
     );
-    $content = QueryList::Query($url, $rules)->getData();
-
-    //原文链接
+    $contentObj = QueryList::html($url);
+    $content = $contentObj->rules($rules)->query()->getData();
+  
+    $contentObj->destruct();
+  
+    $pRules = [
+       'p' => ['p', 'html', '-.content_copyright -script'],
+       'div' => ['div', 'html', '-.content_copyright -script'],
+       'section' => ['section', 'html', '-.content_copyright -script'],
+    ];
+    
+    $pattern = [
+      "/name=.+?['|\"]/i",
+      "/id=.+?['|\"]/i",
+      "/width=.+?['|\"]/i",
+      "/height=.+?['|\"]/i",
+      "/usemap=.+?['|\"]/i",
+      "/shape=.+?['|\"]/i",
+      "/coords=.+?['|\"]/i",
+      "/target=.+?['|\"]/i",
+      "/title=.+?['|\"]/i",
+      "/style=.+?['|\"]/i",
+      "/class=.+?['|\"]/i",
+      "/<br\s*\/?>/i",
+      "/<section\s*?>/i",
+      "/<section\s*\/?>/i",
+      ];
+    // $tmp_content = preg_replace('/ style="([^\"]*)"| style=\'([^\']*)\'| data-([a-z]+)="([^\"]*)" class="([^\"]*)"| class=\'([^\']*)\'/isU','', $content[0]['content']);
+    // $tmp_content = preg_replace('/<([a-z]+)\s+[^>]*>/is', '<$1>', $content[0]['content']);
+    
+//    // $tmp_content = preg_replace($pattern, "", $content[0]['content']);
+    
+    $htmlObject = QueryList::html('<div id="js_content">'. $content[0]['content'] .'</div>');
+    // $htmlObject->find('p')->addClass('b');
+    
+    $textResult = $htmlObject->find('#js_content')->children()->htmls();
+    $htmlObject->destruct();
+    
+    // dd($textResult);
+    $result = createArticleParagraphData($textResult);
+    
+    // dd($result);
+    
+      //原文链接
     preg_match("/var msg_link = \".*\"/", $url, $matches);
     $orUrl = html_entity_decode(urldecode($matches[0]));
     $orUrl = substr(explode('var msg_link = "', $orUrl)[1], 0, -4);
@@ -165,6 +219,11 @@ class ArticleCollect extends BaseResponse implements InterfaceResponse {
     preg_match("/var msg_title = \".*\"/", $url, $matches);
     $orTitle = $matches[0];
     $orTitle = substr(explode('var msg_title = "', $orTitle)[1], 0, -1);
+  
+    //原文描述 !避免出现标题被截取
+    preg_match("/var msg_desc = \".*\"/", $url, $matches);
+    $orDesc = $matches[0];
+    $orDesc = substr(explode('var msg_desc = "', $orDesc)[1], 0, -1);
 
     //原文作者头像
     preg_match("/var round_head_img = \".*\"/", $url, $matches);
@@ -176,18 +235,37 @@ class ArticleCollect extends BaseResponse implements InterfaceResponse {
     $orImgUrl = $matches[0];
     $orImgUrl = substr(explode('var msg_cdn_url = "', $orImgUrl)[1], 0, -1);
 
+
     $detail = array(
       'content'        => $content[0]['content'],
       'article_url'    => urldecode($orUrl),
       'article_title'  => html_entity_decode($orTitle),
+      'article_desc' => $orDesc,
       'author_avatar'  => $orAuthAvatar,
       'author_name' => $content[0]['author_name'],
       'time' => $content[0]['time'],
       'article_thumb'  => $orImgUrl,
-      'style' => $content[0]['stylesheet']
+      'style' => $content[0]['stylesheet'],
+      'paragraph' => $result,
     );
-
-    return $this->ajax(200, 'success', '成功', $detail);
+    if (isset($content[0]['audio'])) {
+      $detail['audio'] = $content[0]['audio'];
+    }
+    $response = [];
+  
+    if (!empty($field)) {
+      $fields = explode(',', $field);
+      
+      foreach ($fields as $k => $v) {
+        if (array_key_exists($v, $detail)) {
+          $response[$v] = $detail[$v];
+        }
+      }
+    } else {
+      $response = $detail;
+    }
+  
+    return $this->ajax(200, 'success', '成功', $response);
   }
 
   /**
@@ -306,6 +384,13 @@ class ArticleCollect extends BaseResponse implements InterfaceResponse {
           'require' => true,
           'desc'    => '文章地址'
         ],
+        'field' => [
+          'name'  => 'field',
+          'type'  => 'string',
+          'min'   => '',
+          'require' => false,
+          'desc'  => '需要返回的字段，用英文(,)分割'
+        ]
       ],
       'toutiaoArticleList' =>[
 

@@ -1,0 +1,19 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "\u6587\u7ae0\u91c7\u96c6",
+        "version": "0.1"
+    },
+    "paths": {
+        "ArticleCollect.sogoWechatArticleList": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "An example resource"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {}
+}

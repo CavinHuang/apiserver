@@ -1,10 +1,10 @@
 <?php
-namespace App\Services\ApiServer\Response;
-
 /**
- * api测试类
+ * @class api测试类
  * @author Flc <2016-7-31 13:44:07>
  */
+namespace App\Services\ApiServer\Response;
+
 class Demo extends BaseResponse implements InterfaceResponse
 {
     /**
@@ -12,7 +12,7 @@ class Demo extends BaseResponse implements InterfaceResponse
      * @var string
      */
     protected $method = 'demo';
-  
+
   /**
    * 接口基础运行
    * @author: slide
@@ -30,7 +30,7 @@ class Demo extends BaseResponse implements InterfaceResponse
         ]
       ];
     }
-  
+
   /**
    * 批量获取用户基本信息
    * @method Demo.getUserInfo
@@ -51,7 +51,7 @@ class Demo extends BaseResponse implements InterfaceResponse
         ]
       ];
     }
-  
+
   /**
    * 接口参数
    * @return array
@@ -67,7 +67,7 @@ class Demo extends BaseResponse implements InterfaceResponse
           'desc'    => '用户ID'
         ],
       ],
-      
+
       'run' => [
       ],
     ];

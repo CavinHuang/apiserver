@@ -43,7 +43,7 @@ function getRealIp() {
     $ips = explode (", ", $_SERVER['HTTP_X_FORWARDED_FOR']);
     if ($ip) { array_unshift($ips, $ip); $ip = FALSE; }
     for ($i = 0; $i < count($ips); $i++) {
-      if (!eregi ("^(10│172.16│192.168).", $ips[$i])) {
+      if (!preg_match ("/^(10│172.16│192.168)./i", $ips[$i])) {
         $ip = $ips[$i];
         break;
       }
@@ -286,4 +286,204 @@ function array2haskey($array, $key, $value){
   }
 
   return false;
+}
+
+/**
+ * 获取客户端ip
+ * @return array|false|string
+ * @author cavinHUang
+ * @date   2018/7/3 0003 下午 4:04
+ *
+ */
+function getIPaddress(){
+  $IPaddress='';
+  if (isset($_SERVER)){
+    if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])){
+      $IPaddress = $_SERVER["HTTP_X_FORWARDED_FOR"];
+    } else if (isset($_SERVER["HTTP_CLIENT_IP"])) {
+      $IPaddress = $_SERVER["HTTP_CLIENT_IP"];
+    } else {
+      $IPaddress = $_SERVER["REMOTE_ADDR"];
+    }
+  } else {
+    if (getenv("HTTP_X_FORWARDED_FOR")){
+      $IPaddress = getenv("HTTP_X_FORWARDED_FOR");
+    } else if (getenv("HTTP_CLIENT_IP")) {
+      $IPaddress = getenv("HTTP_CLIENT_IP");
+    } else {
+      $IPaddress = getenv("REMOTE_ADDR");
+    }
+  }
+  return $IPaddress;
+}
+
+function createArticleParagraphData ($textResult) {
+  $res = [];
+  $idx = 1;
+  $fontPattern = [
+    "/font-family\:\'.+?(\s*)\';/im",
+    "/\s+/im",
+    "/\&nbsp;/im",
+    "\"\s*\""
+  ];
+  $pattern = [
+    "/data-*(\w+)\=\".*?\"\s/im",
+    "/data-*\=\".*?\"/im",
+    "/ style='.*?'/im",
+    "/ style=\".*?\"/im",
+    //"/style=.+?['|\">]/im",
+    "/class=.+?['|\">]/im",
+    "/powered\-by=.+?['|\"]/im",
+    "/<br\s*\/?>/im",
+    "/<section\s*?>/im",
+    "/<\/section>/im",
+    "/<span>\s*<\/span>/i",
+    "/<strong>/i",
+    "/<\/strong>/im",
+    "/<section\s*>/im",
+  ];
+  // 处理段落
+  foreach ($textResult as $key => $value) {
+    $value = stripslashes($value);
+    //$value = preg_replace('/ style=\'.*?\'/im', '', $value);
+    //$value = preg_replace('/\s(?!(src|alt))[a-zA-Z]+=[^\s]*/iu','', $value);
+    //$value =  preg_replace('/<([a-z]+)\s+[^>]*>/is', '<$1>', $value);;
+    //$value = preg_replace($fontPattern, "", $value);
+    $value = preg_replace($pattern, "", $value);
+    if ($value == '' || empty($value)) continue;
+    $tmpStr = '';
+    $valueObj = \QL\QueryList::html('<div id="wrap">'. $value .'</div>');
+    if (strpos($value, '<p') !== false) {
+      $valueObjResult = $valueObj->find('#wrap')->children()->htmls();
+  
+      foreach ($valueObjResult as $item) {
+        $idStr = "b" . $idx;
+        if (strpos($item, '<p') === 0) {
+          $item = preg_replace(['/<p\s*?>/i', '/<\/p>/i'], '', $item);
+        }
+        $tmpStr = createParagraphString($item, $idStr);
+        
+        if (!$tmpStr) continue;
+        
+        $imgText = parseImgText($tmpStr, $idx);
+        if (is_array($imgText['string'])) {
+          foreach ($imgText['string'] as $imgItem) {
+            $res[] = $imgItem;
+          }
+          $idx = $imgText['idx'];
+        } else {
+          $res[] = $tmpStr;
+          $idx ++;
+        }
+      }
+      $valueObj->destruct();
+    } else {
+      $idStr = "b" . $idx;
+      $tmpStr = createParagraphString($value, $idStr);
+      
+      if (!$tmpStr) continue;
+      
+      $imgText = parseImgText($tmpStr, $idx);
+      if (is_array($imgText['string'])) {
+        foreach ($imgText['string'] as $imgItem) {
+          $res[] = $imgItem;
+        }
+        $idx = $imgText['idx'];
+      } else {
+        $res[] = $tmpStr;
+        $idx ++;
+      }
+    }
+  }
+  return $res;
+}
+
+function parseImgText ($string, $idx) {
+  $html = \QL\QueryList::html($string);
+  $htmlStr = [];
+  $flag = true;
+  
+  if ( $html->find( '.b' )->hasClass( 'image-container' ) ) {
+    
+    // 处理文字
+    $texts = $html->find( '.b' )->texts()->toArray();
+    if ( !empty( $texts ) ) {
+      foreach ( $texts as $k => $v ) {
+        if ( $v !== '' ) {
+          $idStr     = "b" . $idx;
+          $paragraph = createParagraphString( $v, $idStr );
+          $htmlStr[] = $paragraph;
+          $idx++;
+          $flag = false;
+        }
+      }
+    }
+    
+    if ( !empty( $texts ) && $texts[ 0 ] !== '' ) {
+      $imgs = $html->find( '.b img' )->attrs( 'src' );
+      $flag = false;
+      foreach ( $imgs as $key => $img ) {
+        $idStr     = "b" . $idx;
+        $img       = '<img src="' . $img . '" />';
+        $paragraph = createParagraphString( $v, $idStr );
+        $htmlStr[] = $paragraph;
+        $idx++;
+      }
+    }
+  }
+  $html->destruct();
+  return $flag ? $flag : ['string' => $htmlStr, 'idx' => $idx];
+}
+
+/**
+ * 拼合段落字符串
+ *
+ * @param $value
+ * @param $idStr
+ * @return string
+ * @author cavinHUang
+ * @date   2018/11/3 0003 下午 2:27
+ *
+ */
+function createParagraphString ($value, $idStr) {
+  
+  if ($value == '') return false;
+  $value = str_replace("\n", '', $value);
+  $classStr = "b";
+  $tmpStr = '<p id="'. $idStr .'"';
+  
+  $styleStr = '';
+  
+  if (strpos($value, 'img') !== false) {
+    $classStr .= " image-container";
+    $styleStr = "position: relative; display: block;";
+  }
+  
+  $tmpStr .= ' class="'. $classStr . '"';
+  
+  if (!empty($styleStr)) {
+    $tmpStr .= ' style="' .$styleStr .'"';
+  }
+  
+  if ( strpos( $value, '<p' ) !== false ) {
+    $reg = [
+      "/<section\s*?>/im",
+      "/<\/section>/im",
+      "/<p\s*?>/im",
+      "/<p>/im",
+      "/<\/p>/im",
+    ];
+    $value = preg_replace(['/section/im'], 'span', $value);
+    $value = preg_replace($reg, '', $value);
+  }
+  $value = htmlspecialchars_decode(str_replace('&nbsp;','', htmlentities(trim($value))));
+  $tmpStr .= '>' . $value . "</p>";
+  return $tmpStr;
+}
+
+function myTrim($str)
+{
+  $search = array(" ","　","\n","\r","\t","&nbsp;");
+  $replace = array("","","","","", "");
+  return str_replace($search, $replace, $str);
 }

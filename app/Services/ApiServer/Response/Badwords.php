@@ -1,5 +1,6 @@
 <?php
 /**
+ * @class 敏感词过滤
  * Created by PhpStorm.
  * User: Administrator
  * Date: 2017/8/11 0011
@@ -11,9 +12,9 @@ namespace App\Services\ApiServer\Response;
 use Illuminate\Support\Facades\Redis;
 
 class Badwords extends BaseResponse implements InterfaceResponse {
-  
+
   protected $method = 'Badwords';
-  
+
   /**
    * 接口基础运行返回控制器数据
    * @author: slide
@@ -37,7 +38,7 @@ class Badwords extends BaseResponse implements InterfaceResponse {
       ]
     ];
   }
-  
+
   /**
    * 添加新的敏感词汇
    * @desc 统一添加新的敏感词汇
@@ -49,7 +50,7 @@ class Badwords extends BaseResponse implements InterfaceResponse {
   public function setBadWords($params = []){
     $badwords = isset($params['badwords']) ? $params['badwords'] : [];
     $badwords_old = $this->getBadWords();
-    
+
     foreach ($badwords as $k => $v){
       if(!in_array($v, $badwords_old)){
         array_push($badwords_old, $v);
@@ -61,14 +62,14 @@ class Badwords extends BaseResponse implements InterfaceResponse {
 return
 str;
     $config.=var_export($badwords_old, true).';';
-    
+
     $result = file_put_contents(CONFIG_PATH.'/badwords.php', $config);
-    
+
     $res = Redis::set('badwords', json_encode($badwords_old, JSON_UNESCAPED_UNICODE));
-    
+
     return $result && $res;
   }
-  
+
   /**
    * 获取所有的敏感词汇
    * @method Badwords.getBadWords
@@ -79,14 +80,14 @@ str;
   public function getBadWords($params = []){
     $format = isset($params['format']) ? $params['format'] : 'array';
     $badwords = Redis::get('badwords');
-    
+
     if($format == 'json'){
       return $this->ajax(200, 'success', '获取词汇列表成功', $badwords);
     }
-    
+
     return $badwords;
   }
-  
+
   /**
    * 检测提交的词那些是敏感词汇
    * @method Badwords.checkBadwords
@@ -109,7 +110,7 @@ str;
     }
     return $result;
   }
-  
+
   /**
    * 检测一段文本中包含的敏感词汇
    * @method Badwords.checkArticle
@@ -157,7 +158,7 @@ str;
     }
     return $this->ajax(200, 'success', '检测完成', $response_result);
   }
-  
+
   /**
    * 接口参数
    * @return array

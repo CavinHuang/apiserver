@@ -1,5 +1,6 @@
 <?php
 /**
+ * @class 音乐接口
  * Created by PhpStorm.
  * User: Administrator
  * Date: 2018/2/24 0024
@@ -80,7 +81,8 @@ class Music extends BaseResponse implements InterfaceResponse{
     $topId = $this->getParams('topId', 'string');
     $songBegin = $this->getParams('songBegin', 'int');
     $songNum = $this->getParams('songNum', 'int') ? $this->getParams('songNum', 'int') : 30;
-    $url = "https://c.y.qq.com/v8/fcg-bin/fcg_v8_toplist_cp.fcg?tpl=3&page=detail&date=2018-02-24&topid={$topId}&type=top&song_begin={$songBegin}&song_num={$songNum}&g_tk=5381&jsonpCallback=MusicList&loginUin=0&hostUin=0&format=jsonp&inCharset=utf8&outCharset=utf-8";
+    $date = date('Y-m-d', strtotime('-1 day'));
+    $url = "https://c.y.qq.com/v8/fcg-bin/fcg_v8_toplist_cp.fcg?tpl=3&page=detail&date={$date}&topid={$topId}&type=top&song_begin={$songBegin}&song_num={$songNum}&g_tk=5381&jsonpCallback=MusicList&loginUin=0&hostUin=0&format=jsonp&inCharset=utf8&outCharset=utf-8";
 
     $result = httpRequest($url);
 
@@ -108,9 +110,41 @@ class Music extends BaseResponse implements InterfaceResponse{
       $responeRes['songlist'][$k]['songname'] = $v['data']['songname'];
       $responeRes['songlist'][$k]['strMediaMid'] = $v['data']['strMediaMid'];
       $responeRes['songlist'][$k]['vid'] = $v['data']['vid'];
+      $responeRes['songlist'][$k]['singer'] = $v['data']['singer'];
 
     }
     return $this->ajax(200, 'success', '获取歌曲列表成功', $responeRes);
+  }
+
+  /**
+   * 搜索音乐
+   * @method Music.search_music
+   * @desc 搜索音乐
+   * @author slide
+   * @return array result 成功返回获取歌曲搜索音乐失败返回错误信息
+   */
+  public function search_music () {
+    $p = $this->getParams('p', 'init') ? $this->getParams('p', 'init') : 1; // 页码
+    $n = $this->getParams('n', 'init') ? $this->getParams('n', 'init') : 20; // 每页多少条
+    $keyword = $this->getParams('keyword', 'string') ? $this->getParams('keyword', 'string') : ''; // 每页多少条
+
+    $url = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp?new_json=1&remoteplace=txt.yqq.song&p={$p}&n={$n}&w={$keyword}&jsonpCallback=Musicurl&loginUin=0&hostUin=0&format=jsonp&inCharset=utf8&outCharset=utf-8&platform=yqq";
+
+    $url = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&new_json=1&remoteplace=txt.yqq.center&searchid=52836159427565787&t=0&aggr=1&cr=1&catZhida=1&lossless=0&flag_qc=0&p={$p}&n={$n}&w={$keyword}&g_tk=5381&jsonpCallback=Musicurl&loginUin=0&hostUin=0&format=jsonp&inCharset=utf8&outCharset=utf-8&notice=0&platform=yqq&needNewCode=0";
+
+    $result = httpRequest($url);
+
+    $jsonpData = substr($result[1], 0, strlen($result[1]) - 1);
+    $arrayStr = substr($jsonpData, 9);
+
+    $dataArr = json_decode($arrayStr, true);
+
+    if ($dataArr['code'] == 0) {
+      $data = $dataArr['data']['song'];
+      return $this->ajax(200, 'success', '获取歌曲成功', $data);
+    } else {
+      return $this->ajax(404, 'not found');
+    }
   }
 
   /**
@@ -137,7 +171,7 @@ class Music extends BaseResponse implements InterfaceResponse{
 
     $url = 'http://dl.stream.qqmusic.qq.com/'.$info['filename'].'?vkey='.$info['vkey'].'&guid=8905057784&uin=0&fromtag=66';
 
-    return $this->ajax(200, 'success', '获取歌曲列表成功', $url);
+    return $this->ajax(200, 'success', '获取歌曲成功', $url);
 
   }
 
